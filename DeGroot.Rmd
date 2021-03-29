@@ -3,13 +3,62 @@ title: "Naive learning"
 author: "Raffaele di Costanzo, Wojciech Maślakiewicz"
 date: "3/29/2021"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Some introduction
+## Introduction
+
+Observing, analyzing and modeling social interactions constitutes a
+substantial area of research in social sciences. The concept of social
+network provides a robust and handy, graph-theory-based framework for
+analyzing how people interact, communicate and form communities.
+
+One special form of interaction that falls within the scope of this
+framework is social learning - an umbrella term for encompassing a
+variety of phenomenons including:
+
+-   how groups of people form networks
+-   how they influence each other in such networks
+-   how their opinion relates to some objective truth
+-   how those opinions evolve in the process of interactions.
+
+Many mathematical models have been developed to formalize those issues.
+Usually, every such model comprises of some social **structure** defining
+how agents interact and an **updating rule** which determines how each
+agent forms his own opinion, possibly by taking into account opinions of
+others. Sometimes those two elements are closely tied together and are
+difficult to distinguish but in general we may divide those models with
+respect to the latter component into two following categories.
+
+1. **Bayesian learning models**
+
+The underlying assumption is agents update their believes using Bayes'
+rule. Formally, given a parameter $\Theta$ (e.g. an opinion about a
+political issue) and a signal $s$ (e.g. a news or opinion of others),
+the updating procedure is given by
+$$P(\Theta|s) = \frac{P(s|\Theta)P(\Theta)}{P(s)}  ,$$ where $P(\Theta)$
+is a prior probability which may be interpreted as a result of agents
+own observations of the world.
+
+2. **Non-bayesian learning models**
+
+This class of models usually incorporate a relatively more simple updating rule.
+The most prominent example is the __DeGroot model__ [REFERENCE], sometimes known as
+naive learning, which assumes that each agent updates her beliefs by taking an 
+average of her neighbor's opinions (possibly, but not necessarily including her own opinion). Contrary to the Bayesian framework which might impose great cognitive abilities 
+on agents which may be unrealistic to bear by real people, the DeGroot model 
+provides a rule that is empirically justifiable in its simplicity but still flexible for further extensions.
+
+In this short survey we will concentrate on the DeGroot model and provide a brief 
+discussion of its various extensions found in the literature with particular focus
+on their possible usage in modeling and simulation of phenomena combining information bubbles and polarization observed during the pandemics such as the anti-vaccine 
+movements or plandemics conspiracy theory.
 
 ## Summary of the experimental paper
 
@@ -42,17 +91,15 @@ markov_chains_2 <-  function(M, x0, iter ){
 }
 ```
 
-
-
-< description of basic model>
+\< description of basic model\>
 
 ## Extension 1
 
-some description of extension 1  
+some description of extension 1
 
-some equations  
+some equations
 
-some theoretical results  
+some theoretical results
 
 some simulation
 
@@ -73,7 +120,6 @@ markov_chains_4 <-  function(M, x0, iter, fA,fB,fC
   return(sym)
 }
 ```
-
 
 ```{r extension 1, include=FALSE}
 
@@ -157,19 +203,15 @@ matplot(t(sym), ylim = c(0,1.4), type = c("b"),pch=1,col = as.factor(sym[,t+1]))
 legend("topright", legend = unique(sym[,t+1]), col=1:3, pch=19, bty ="n") # optional legend
 ```
 
-
-
 ## Extension 2
 
 > Description, equations etc.
 
- 
-## Some summary  
- 
+## Some summary
+
 summary here
- 
+
 ## References
 
-1. Ref1 
-2. Ref2
-...
+1.  Ref1
+2.  Ref2 ...
