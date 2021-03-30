@@ -42,9 +42,11 @@ The underlying assumption is agents update their believes using Bayes'
 rule. Formally, given a parameter $\Theta$ (e.g. an opinion about a
 political issue) and a signal $s$ (e.g. a news or opinion of others),
 the updating procedure is given by
-$$P(\Theta|s) = \frac{P(s|\Theta)P(\Theta)}{P(s)}  ,$$ where $P(\Theta)$
+\begin{equation} 
+P(\Theta|s) = \frac{P(s|\Theta)P(\Theta)}{P(s)}  ,
+\end{equation} where $P(\Theta)$
 is a prior probability which may be interpreted as a result of agents
-own observations of the world.
+own observations of the world. 
 
 2. **Non-bayesian learning models**
 
@@ -60,10 +62,27 @@ discussion of its various extensions found in the literature with particular foc
 on their possible usage in modeling and simulation of phenomena combining information bubbles and polarization observed during the pandemics such as the anti-vaccine 
 movements or plandemics conspiracy theory.
 
+We will heavily rely on two exhaustive surveys [REFERENCE] and try to illustrate theoretical results with some simulations. 
+
 ## Summary of the experimental paper
 
 ## Basic model
 
+In this section we will briefly present the basic version of the DeGroot model and introduce notation that we shall further use. 
+
+We consider a _set of agents_ $N = {1,2, ..., n}$ who interact in discrete time $T = {1,2,...}$. At each time instant $t$ every (fixed) agent $i$ has his _opinion_ $x_i(t) \in [0,1]$ and _trust_ (weight) $w_{ij}$ towards every other agent $j \in N$. Let's denote with $x(t) = \left(x_1(t), x_2(t), ..., x_n(t)\right)$ a vector of agents' opinions or _opinion profile_ at time $t$. With such notation, each agent agent updates his opinion by averaging opinions of other agents, that is 
+$$ x_i(t+1) = w_{i1}x_1(t) + w_{i2}x_2(t) + ... + w_{in}x_n(t) ,$$
+where $\sum_j w_{ij} = 1$
+
+
+In the most general form trust may depend both on time and the opinion profile. However, whenever it does not lead to confusion we will simply write $w_{ij}$ instead of $w_{ij}(t,x(t))$ to denote agents $i$ trust towards agent $j$. The trust between agents gives raise to the structure of their interactions which can be represented as a row stochastic matrix, where $W = [w_{ij}]$ which may be also viewed at an incidence matrix of a weighted directed graph. This allows us to apply elements of the sophisticated machinery of graph theory and Markov chains to analyzing social learning problems. 
+
+In compact matrix notation our general model (GM) has the following components:
+
+* a directed weighted graph of trust between agents: $G = (N,W)$
+* an updating rule $x(t+1) = W(t,x(t))x(t) = W^tx(0)$ for $t \in T$
+
+TODO: consensus, theoretical results, simulation
 ```{r packages, include=FALSE}
 requiredPackages = c("markovchain", "readr","diagram", "wesanderson", "expm") # list of required packages
 for(i in requiredPackages){if(!require(i,character.only = TRUE)) install.packages(i)}
@@ -91,7 +110,6 @@ markov_chains_2 <-  function(M, x0, iter ){
 }
 ```
 
-\< description of basic model\>
 
 ## Extension 1
 
