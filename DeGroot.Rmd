@@ -82,6 +82,13 @@ In compact matrix notation our general model (GM) has the following components:
 * a directed weighted graph of trust between agents: $G = (N,W)$
 * an updating rule $x(t+1) = W(t,x(t))x(t) = W^tx(0)$ for $t \in T$
 
+The main issues analyzed within this framework are _convergence_ of beliefs and _reaching consensus_. 
+
+We say that the beliefs converge for a given matrix of weights $W$ whenever for every initial opinion profile $x(0) \in [0,1]^n$ the limit 
+\[\lim_{t \to \infty} W^tx(0)\] exists.
+
+
+
 TODO: consensus, theoretical results, simulation
 ```{r packages, include=FALSE}
 requiredPackages = c("markovchain", "readr","diagram", "wesanderson", "expm") # list of required packages
