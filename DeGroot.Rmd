@@ -103,7 +103,7 @@ In the following sections we will present different versions and extensions of t
 requiredPackages = c("markovchain", "readr","diagram", "wesanderson", "expm") # list of required packages
 for(i in requiredPackages){if(!require(i,character.only = TRUE)) install.packages(i)}
 for(i in requiredPackages){if(!require(i,character.only = TRUE)) library(i,character.only = TRUE) } 
-
+source('util_funcs.R')
 # Base on:
 # 1. Taalaibekova, 2018 example 2.1
 # 2. Janpu Hou https://rpubs.com/JanpuHou/326048
@@ -126,36 +126,7 @@ markov_chains_2 <-  function(M, x0, iter ){
 }
 ```
 
-
-## Extension 1
-
-some description of extension 1
-
-some equations
-
-some theoretical results
-
-some simulation
-
-```{r extension 1 simulation, echo=TRUE}
-markov_chains_4 <-  function(M, x0, iter, fA,fB,fC
-                             ,noA = N*percA,noB = N*percB,noC = N*percC  ){
-  sym <- matrix(0, nrow = nrow(M), ncol =  iter )
-  M_to_p_i <- M
-  sym[,1] <- x0
-  for(i in 2:iter) {
-    lA <- sapply(rep(i,noA),fA_con)
-    lB <- sapply(rep(i,noB),fB_con)
-    lC <- sapply(rep(i,noC),fC_con)
-    lambdas = c(lA,lB,lC)
-    sym[,i] <- ((1-lambdas)*diag(dim(M)[1]) + lambdas*M_to_p_i) %*% x0 
-    M_to_p_i <- M %*% M_to_p_i
-  }
-  return(sym)
-}
-```
-
-```{r extension 1, include=FALSE}
+```{r matrices, include=FALSE}
 
 
 
@@ -176,11 +147,11 @@ trustCC = 0
 trustCA = 1/5
 trustCB = 4/5
 
-percA = 0.3
+percA = 0.4
 percB = 0.5
-percC = 0.2
+percC = 0.1
 
-N = 100
+N = 10
 
 AA = make_matrix(N*percA,c(rep(trustAA/(N*percA),(N*percA)^2)))
 AB = make_matrix(N*percA,c(rep(trustAB/(N*percB),(N*percB)*(N*percA))))
@@ -202,44 +173,1122 @@ rowC = cbind(CA,CB,CC)
 
 W= rbind(rowA,rowB,rowC)
 
+```
+
+
+## Time-varying weight on one’s own beliefs
+
+some description of extension 1
+
+some equations
+
+some theoretical results
+
+some simulation
+
+```{r demarzo simulation, echo=FALSE, warning=FALSE}
+
+update_rule_1<-  function(x, W, i,lambda,iter){
+  #lambda takes form of time -> scalar mapping
+  
+  n <- nrow(W)
+
+  M_next <- W 
+
+  x_next <- ((1-lambda(i,iter))*diag(n) + lambda(i,iter)*W)%*%x
+  
+  return(list('x_next' = x_next, 'matrix' = M_next))
+}
+
+fA_conn = function(i,t=16){ return(1- 1/t*i +runif(1,-0.01,0.01)) }
+fB_conn = function(i,t=16){ return(0 + 0.9/t *i + runif(1,-0.01,0.01)) }
+fC_conn = function(i,t=16){ return(runif(1,-0.9,0.9) ) }
+
+lambda <- fB_conn
+
+
 distA = rbeta(N*percA,1,7)
 distB = rbeta(N*percB,7,1)
 distC = rbeta(N*percC,7,7)
 
+X_0 <- c(distA,distB,distC)
+t <- 20 # Iteration of interactions 
 
-fA_con = function(i){ return(1 - 0.9/16 *i + runif(1,-0.01,0.01)) }
-fB_con = function(i){ return(1 - 0.9/16 *i + runif(1,-0.01,0.01)) }
-fC_con = function(i){ return(runif(1,0.6,0.9) ) }
+ag_names <- c(rep("Agent A",N*percA),rep("Agent B",N*percB),rep("Agent C",N*percC))
+show_graph(W)
+sym <-simulate(W,X_0,t,update_rule_1, ag_names,lambda,t)
+make_opinon_plot(sym)
+
+```
+
+```{r friedkin_johnsen}
+
+update_rule_2<-  function(x, W, i,D,x_0){
+  #lambda takes form of time -> scalar mapping
+  
+  n <- nrow(W)
+
+  M_next <- W
+
+  x_next <- D%*%W%*%x + (diag(n)-D)%*%x_0
+  
+  return(list('x_next' = x_next, 'matrix' = M_next))
+}
+istA = rbeta(N*percA,1,7)
+distB = rbeta(N*percB,7,1)
+distC = rbeta(N*percC,7,7)
+
+X_0 <- c(distA,distB,distC)
+t <- 20 # Iteration of interactions 
+x_0<-X_0
+ag_names <- c(rep("Agent A",N*percA),rep("Agent B",N*percB),rep("Agent C",N*percC))
+diagonal_rand <- runif(nrow(W))
+diagonal_1 <- c(rep(1/3,nrow(W)/2),rep(2/3,nrow(W)/2))
+D<-diag(diagonal_1)
+
+
+show_graph(W)
+sym <-simulate(W,X_0,t,update_rule_2, ag_names,D,x_0)
+make_opinon_plot(sym)
+```
+
+
+```{r}
+#### example from paper
+W <- matrix(c(0.22,0.12,0.356,0.3,
+             0.147,0.215,0.344,0.294,
+             0,0,1,0,
+             0.089,0.178,0.446,0.286),nrow=4,byrow = T)
+D<- diag(diag(W))
+D_0<-diag(4)
+show_graph(W)
+X_0<-c(0.25,0.25,0.75,0.85)
+x_0<-X_0
+ag_names<-c('A','B','C','D')
+sym <-simulate(W,X_0,t,update_rule_2, ag_names,D,x_0)
+make_opinon_plot(sym)
+```
+
+
+
+
+```{r conformity, eval=FALSE, include=FALSE}
+
+update_rule_3<-  function(x, W, i,D,x_0,delta){
 
   
+  n <- nrow(W)
+
+ 
+  D <- diag(diag(W))
+  I<-diag(n)
+  M <- solve(D+(W-D)%*%(I-delta%*%solve(I-D)%*%(W-D)))%*%(I-delta) 
+  x_next <- M%*%x
+  M_next <- W
+  return(list('x_next' = x_next, 'matrix' = M_next))
+}
+distA = rbeta(N*percA,1,7)
+distB = rbeta(N*percB,7,1)
+distC = rbeta(N*percC,7,7)
+
 X_0 <- c(distA,distB,distC)
-t <- 15 # Iteration of interactions 
-sym <- as.data.frame(markov_chains_4(W, X_0 ,t,fA_con,fB_con,fC_con))
-X_fin = sym[,t]
-vacc_0 <- sum(X_0>0.5)/length(X_0)
-vacc_fin <- sum(X_fin>0.5)/length(X_fin)
+t <- 20 # Iteration of interactions 
+x_0<-X_0
+ag_names <- c(rep("Agent A",N*percA),rep("Agent B",N*percB),rep("Agent C",N*percC))
+
+#delta<-diag(c(0.5,0.5,0.5,0.5,0.5,-0.2,-0.2,-0.2,0.2,0.2))
+delta<-diag(rep(0,nrow(W)))
+
+show_graph(W)
+sym <-simulate(W,X_0,t,update_rule_3, ag_names,D,x_0,delta)
+make_opinon_plot(sym)
+```
 
 
-sym[1:(N*percA),t+1] <- rep("Agent A",N*percA)
-sym[(N*percA+1):(N*percA+N*percB),t+1] <- rep("Agent B",N*percB)
-sym[(N*percA+N*percB+1):(N*percA+N*percB+N*percC),t+1] <- rep("Agent C",N*percC)
+## Algorithmic Bias
 
-#row.names(sym)[1:(N*percA)] <- rep("Agent A",N*percA)
-#row.names(sym)[(N*percA+1):(N*percA+N*percB)] <- rep("Agent B",N*percB)
-#row.names(sym)[(N*percA+N*percB+1):(N*percA+N*percB+N*percC)] <- rep("Agent C",N*percC)
+> The Algorithmic Bias model considers a population of individuals, where each individual holds a continuous opinion in the interval [0,1]. Individuals are connected by a social network, and interact pairwise at discrete time steps. The interacting pair is selected from the population at each time point in such a way that individuals that have close opinion values are selected more often, to simulate algorithmic bias. The parameter gamma controls how large this effect is. Specifically, the first individual in the interacting pair is selected randomly, while the second individual is selected based on a probability that decreases with the distance from the opinion of the first individual, i.e. directly proportional with the distance raised to the power -gamma.
+<br><br>After interaction, the two opinions may change, depending on a so called bounded confidence parameter, epsilon. This can be seen as a measure of the open-mindedness of individuals in a population. It defines a threshold on the distance between the opinion of the two individuals, beyond which communication between individuals is not possible due to conflicting views. Thus, if the distance between the opinions of the selected individuals is lower than epsilon, the two individuals adopt their average opinion. Otherwise nothing happens.
+<br><br>Note: setting gamma=0 reproduce the results for the Deffuant model.
+
+```{python algobiasmodel, python.reticulate=F, eval=F}
+import networkx as nx
+import ndlib.models.ModelConfig as mc
+import ndlib.models.opinions as op
+from ndlib.viz.mpl.OpinionEvolution import OpinionEvolution
+#g = nx.from_numpy_matrix(r.W)
+# mMean field scenario
+g = nx.complete_graph(100)
+
+# Algorithmic Bias model
+model = op.AlgorithmicBiasModel(g)
+for x in [1,2,3]:
+  print(x)
+# Model configuration
+for x in [0.15, 0.32, 0.45, 0.65]:
+  config = mc.Configuration()
+  config.add_model_parameter("epsilon", x) #base 32
+  config.add_model_parameter("gamma", 0)
+  model.set_initial_status(config)
+  
+  # Simulation execution
+  iterations = model.iteration_bunch(100)
+  
+  viz = OpinionEvolution(model, iterations)
+  viz.plot("opinion_ev-{}.png".format(x))
 
 ```
 
-A plot of the extension:
+<center>
+![](opinion_ev-0.15.png)
+![](opinion_ev-0.25.png)
+![](opinion_ev-0.35.png)
+![](opinion_ev-0.45.png)
+</center>
+<br>
 
-```{r extension 1 plot, echo=FALSE, warning=FALSE}
-matplot(t(sym), ylim = c(0,1.4), type = c("b"),pch=1,col = as.factor(sym[,t+1])) #plot
-legend("topright", legend = unique(sym[,t+1]), col=1:3, pch=19, bty ="n") # optional legend
+## Attraction-Repulsion Weighted Hegselmann-Krause
+
+> The Attraction-Repulsion Weighted Hegselmann-Krause was introduced by Toccaceli et al. in 2020.<br>
+This model is a variation of the Weighted Hegselmann-Krause (WHK). This model considers pair-wise interactions.<br>To model the attraction and repulsion of opinions, during each iteration an agent $i$ is randomly selected along with one of its neighbors, $j$ - not taking into account the $ϵ$ threshold. Once identified the pair-wise interaction, the absolute value of the difference between the opinions of $i$ and $j$ is computed.<br><br>There are four different variants of the method:
+
+1. **Base case**: If the computed difference value is lower than ϵ then the update rule becomes:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+  <mtable columnalign="right left" rowspacing="3pt" columnspacing="0em" displaystyle="true">
+    <mtr>
+      <mtd>
+        <msub>
+          <mi>x</mi>
+          <mi>i</mi>
+        </msub>
+        <mo stretchy="false">(</mo>
+        <mi>t</mi>
+        <mo>+</mo>
+        <mn>1</mn>
+        <mo stretchy="false">)</mo>
+        <mo>=</mo>
+        <mrow>
+          <mo>{</mo>
+          <mtable columnalign="left left" rowspacing="4pt" columnspacing="1em">
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <msub>
+                      <mi>x</mi>
+                      <mi>i</mi>
+                    </msub>
+                    <mo stretchy="false">(</mo>
+                    <mi>t</mi>
+                    <mo stretchy="false">)</mo>
+                    <mo>+</mo>
+                    <msub>
+                      <mi>x</mi>
+                      <mi>j</mi>
+                    </msub>
+                    <mo stretchy="false">(</mo>
+                    <mi>t</mi>
+                    <mo stretchy="false">)</mo>
+                    <msub>
+                      <mi>w</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>i</mi>
+                        <mo>,</mo>
+                        <mi>j</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mspace width="1em" />
+                <mspace width="1em" />
+                <mstyle displaystyle="false" scriptlevel="0">
+                  <mtext>if&#xA0;</mtext>
+                </mstyle>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2265;<!-- ≥ --></mo>
+                <mn>0</mn>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <msub>
+                      <mi>x</mi>
+                      <mi>i</mi>
+                    </msub>
+                    <mo stretchy="false">(</mo>
+                    <mi>t</mi>
+                    <mo stretchy="false">)</mo>
+                    <mo>+</mo>
+                    <msub>
+                      <mi>x</mi>
+                      <mi>j</mi>
+                    </msub>
+                    <mo stretchy="false">(</mo>
+                    <mi>t</mi>
+                    <mo stretchy="false">)</mo>
+                    <msub>
+                      <mi>w</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>i</mi>
+                        <mo>,</mo>
+                        <mi>j</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mspace width="1em" />
+                <mspace width="1em" />
+                <mstyle displaystyle="false" scriptlevel="0">
+                  <mtext>if&#xA0;</mtext>
+                </mstyle>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&lt;</mo>
+                <mn>0</mn>
+              </mtd>
+            </mtr>
+          </mtable>
+          <mo fence="true" stretchy="true" symmetric="true"></mo>
+        </mrow>
+      </mtd>
+    </mtr>
+  </mtable>
+</math>
+<br>
+
+2. **Attraction**: if the computed difference value is lower than $ϵ$ then the following update rule are applied:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+  <mtable columnalign="right left" rowspacing="3pt" columnspacing="0em" displaystyle="true">
+    <mtr>
+      <mtd>
+        <msub>
+          <mi>x</mi>
+          <mi>i</mi>
+        </msub>
+        <mo stretchy="false">(</mo>
+        <mi>t</mi>
+        <mo>+</mo>
+        <mn>1</mn>
+        <mo stretchy="false">)</mo>
+        <mo>=</mo>
+        <mrow>
+          <mo>{</mo>
+          <mtable columnalign="left left" rowspacing=".2em" columnspacing="1em" displaystyle="false">
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) \geq 0, x_i(t) &gt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) \geq 0, x_i(t) &lt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) &lt; 0, x_i(t) &gt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) &lt; 0, x_i(t) &lt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) &lt; 0, sum_{op} &gt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <mi>m</mi>
+                    <msub>
+                      <mo>,</mo>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) &lt; 0, sum_{op} &lt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) \geq 0, sum_{op} &gt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) \geq 0, sum_{op} &lt; 0</mtext>
+              </mtd>
+            </mtr>
+          </mtable>
+          <mo fence="true" stretchy="true" symmetric="true"></mo>
+        </mrow>
+      </mtd>
+    </mtr>
+  </mtable>
+</math>
+
+where 
+<math xmlns="http://www.w3.org/1998/Math/MathML">
+  <mi>s</mi>
+  <mi>u</mi>
+  <msub>
+    <mi>m</mi>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mi>o</mi>
+      <mi>p</mi>
+    </mrow>
+  </msub>
+  <mo>=</mo>
+  <msub>
+    <mi>x</mi>
+    <mi>i</mi>
+  </msub>
+  <mo stretchy="false">(</mo>
+  <mi>t</mi>
+  <mo stretchy="false">)</mo>
+  <mo>+</mo>
+  <msub>
+    <mi>x</mi>
+    <mi>j</mi>
+  </msub>
+  <mo stretchy="false">(</mo>
+  <mi>t</mi>
+  <mo stretchy="false">)</mo>
+  <msub>
+    <mi>w</mi>
+    <mrow class="MJX-TeXAtom-ORD">
+      <mi>i</mi>
+      <mo>,</mo>
+      <mi>j</mi>
+    </mrow>
+  </msub>
+</math>
+<br><br>
+
+3. **Repulsion**: if the difference between $xi(t)$ and $xj(t)$ exceeds ϵ then the following update rule are applied:
+
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+  <mtable columnalign="right left" rowspacing="3pt" columnspacing="0em" displaystyle="true">
+    <mtr>
+      <mtd>
+        <msub>
+          <mi>x</mi>
+          <mi>i</mi>
+        </msub>
+        <mo stretchy="false">(</mo>
+        <mi>t</mi>
+        <mo>+</mo>
+        <mn>1</mn>
+        <mo stretchy="false">)</mo>
+        <mo>=</mo>
+        <mrow>
+          <mo>{</mo>
+          <mtable columnalign="left left" rowspacing=".2em" columnspacing="1em" displaystyle="false">
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <mi>m</mi>
+                    <mrow class="MJX-TeXAtom-ORD">
+                      <mi>o</mi>
+                      <mi>p</mi>
+                    </mrow>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) \geq 0, x_i(t) &gt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) \geq 0, x_i(t) &lt; x_j(t)</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) &lt; 0, x_i(t) &gt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) &lt; 0, x_i(t) &lt; x_j(t)&#xA0;</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) &lt; 0, sum_{op} &gt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>&#x2212;<!-- − --></mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) \geq 0,  x_j(t) &lt; 0, sum_{op} &lt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;<!-- − --></mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) \geq 0, sum_{op} &gt; 0</mtext>
+              </mtd>
+            </mtr>
+            <mtr>
+              <mtd>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo>+</mo>
+                <mfrac>
+                  <mrow>
+                    <mi>s</mi>
+                    <mi>u</mi>
+                    <msub>
+                      <mi>m</mi>
+                      <mrow class="MJX-TeXAtom-ORD">
+                        <mi>o</mi>
+                        <mi>p</mi>
+                      </mrow>
+                    </msub>
+                  </mrow>
+                  <mn>2</mn>
+                </mfrac>
+                <mo stretchy="false">(</mo>
+                <mn>1</mn>
+                <mo>+</mo>
+                <msub>
+                  <mi>x</mi>
+                  <mi>i</mi>
+                </msub>
+                <mo stretchy="false">(</mo>
+                <mi>t</mi>
+                <mo stretchy="false">)</mo>
+                <mo stretchy="false">)</mo>
+              </mtd>
+              <mtd>
+                <mtext>if x_i(t) &lt; 0,  x_j(t) \geq 0, sum_{op} &lt; 0</mtext>
+              </mtd>
+            </mtr>
+          </mtable>
+          <mo fence="true" stretchy="true" symmetric="true"></mo>
+        </mrow>
+      </mtd>
+    </mtr>
+  </mtable>
+</math>
+<br>
+
+4. **Attraction and Repulsion**: if the computed difference value is lower than $ϵ$ then the attraction interaction occurs, otherwise the repulsion attraction occurs.
+
+
+### Simulation
+
+```{python arwhk, python.reticulate=F, eval=F}
+# Network topology
+g = nx.erdos_renyi_graph(1000, 0.1)
+#g = nx.from_numpy_matrix(r.W)
+# Model selection
+model = op.ARWHKModel(g)
+
+# Model Configuration
+config = mc.Configuration()
+config.add_model_parameter("epsilon", 0.32)
+config.add_model_parameter("perc_stubborness", 0.2)
+config.add_model_parameter("option_for_stubbornness", 0)
+config.add_model_parameter("method_variant", 2)
+
+# Setting the edge parameters
+weight = 0.2
+if isinstance(g, nx.Graph):
+    edges = g.edges
+else:
+    edges = [(g.vs[e.tuple[0]]['name'], g.vs[e.tuple[1]]['name']) for e in g.es]
+
+for e in edges:
+    config.add_edge_configuration("weight", e, weight)
+
+
+model.set_initial_status(config)
+
+# Simulation execution
+iterations = model.iteration_bunch(20)
+
+viz = OpinionEvolution(model, iterations)
+viz.plot("opinion.png")
+
 ```
 
-## Extension 2
-
-> Description, equations etc.
+<center>
+![](opinion.png)
+</center>
 
 ## Some summary
 
